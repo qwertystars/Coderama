@@ -455,11 +455,14 @@ class DocumentationGenerator:
             examples="See function documentation above"
         )
 
-        # Add to knowledge base
+        # Compute code hash for sync tracking
+        code_hash = hashlib.md5(code.encode()).hexdigest()
+
+        # Add to knowledge base with code_hash for sync detection
         self.knowledge_base.add_document(
             content=module_doc,
             source=module_path,
-            metadata={"type": "module_doc"},
+            metadata={"type": "module_doc", "code_hash": code_hash},
             tags=["documentation", "module", Path(module_path).stem]
         )
 

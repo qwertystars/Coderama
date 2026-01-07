@@ -222,6 +222,16 @@ class MetricCollector:
             return {}
 
         values = [m["value"] for m in metrics]
+        sorted_values = sorted(values)
+
+        # Proper percentile calculation with bounds checking
+        def percentile(data: list, p: float) -> float:
+            if not data:
+                return 0
+            import math
+            index = max(0, math.ceil(p * len(data)) - 1)
+            return data[min(index, len(data) - 1)]
+
         return {
             "count": len(values),
             "min": min(values),
@@ -229,8 +239,8 @@ class MetricCollector:
             "mean": statistics.mean(values),
             "median": statistics.median(values),
             "stdev": statistics.stdev(values) if len(values) > 1 else 0,
-            "p95": sorted(values)[int(len(values) * 0.95)] if values else 0,
-            "p99": sorted(values)[int(len(values) * 0.99)] if values else 0
+            "p95": percentile(sorted_values, 0.95),
+            "p99": percentile(sorted_values, 0.99)
         }
 
 
@@ -816,20 +826,24 @@ class AgentMetrics:
     def get_agent_snapshot(self, agent_name: str) -> AgentMetricSnapshot:
         """Get current metrics snapshot for an agent"""
         tags = {"agent": agent_name}
-        stats = self.metrics.get_statistics("agent.task.duration", tags=tags, window_minutes=60)
+        window_minutes = 60
+        stats = self.metrics.get_statistics("agent.task.duration", tags=tags, window_minutes=window_minutes)
 
         total_tasks = self.metrics.get_counter("agent.tasks.total", tags=tags)
         success_tasks = self.metrics.get_counter("agent.tasks.success", tags=tags)
         failure_tasks = self.metrics.get_counter("agent.tasks.failure", tags=tags)
 
-        lines_stats = self.metrics.get_statistics("agent.code.lines", tags=tags, window_minutes=60)
+        lines_stats = self.metrics.get_statistics("agent.code.lines", tags=tags, window_minutes=window_minutes)
+
+        # Compute elapsed hours for velocity (use window duration, minimum 1 minute to avoid divide by zero)
+        elapsed_hours = max(window_minutes, 1) / 60.0
 
         snapshot = AgentMetricSnapshot(
             agent_name=agent_name,
             timestamp=datetime.now(),
             code_quality_score=self.metrics.get_gauge("agent.code.quality", tags=tags),
             test_coverage=self.metrics.get_gauge("agent.test.coverage", tags=tags),
-            velocity=success_tasks / max(1, 1),  # Tasks per hour approximation
+            velocity=success_tasks / elapsed_hours,  # Tasks per hour
             error_rate=failure_tasks / max(total_tasks, 1),
             avg_response_time_ms=stats.get("mean", 0),
             successful_tasks=success_tasks,

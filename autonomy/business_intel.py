@@ -382,6 +382,14 @@ class VelocityTracker:
         end_date = datetime.fromisoformat(sprint["end_date"])
         total_days = (end_date - start_date).days
 
+        # Guard against non-positive duration sprints
+        if total_days <= 0:
+            return {
+                "sprint_id": sprint_id,
+                "data_points": [],
+                "ideal_burndown": []
+            }
+
         ideal = []
         for i in range(total_days + 1):
             date = start_date + timedelta(days=i)

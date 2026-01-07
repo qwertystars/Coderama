@@ -461,23 +461,25 @@ class SlackIntegration:
         emoji = ":white_check_mark:" if status == "success" else ":x:"
         notification_type = NotificationType.SUCCESS if status == "success" else NotificationType.ERROR
 
+        # Ensure details is a dict to avoid TypeError when unpacking
+        details_dict = details if details is not None else {}
+
         message = f"""
 *Environment:* {environment}
 *Version:* {version}
 *Status:* {status.upper()}
 """
-        if details:
-            if details.get("duration"):
-                message += f"*Duration:* {details['duration']}s\n"
-            if details.get("deployed_by"):
-                message += f"*Deployed by:* {details['deployed_by']}\n"
+        if details_dict.get("duration"):
+            message += f"*Duration:* {details_dict['duration']}s\n"
+        if details_dict.get("deployed_by"):
+            message += f"*Deployed by:* {details_dict['deployed_by']}\n"
 
         return await self.send_notification(
             channel=channel,
             title=f"{emoji} Deployment {status.capitalize()}: {version}",
             message=message,
             notification_type=notification_type,
-            metadata={"environment": environment, "version": version, **details}
+            metadata={"environment": environment, "version": version, **details_dict}
         )
 
     def get_notification_history(

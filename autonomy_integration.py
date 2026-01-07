@@ -325,11 +325,11 @@ def format_dashboard_html() -> str:
                 </div>
                 <div style="background: #2a2a40; padding: 15px; border-radius: 8px;">
                     <div style="color: #6272a4; font-size: 12px;">TIME REDUCTION</div>
-                    <div style="color: #00D9FF; font-size: 24px; font-weight: bold;">{roi.get('time_reduction', '0%')}</div>
+                    <div style="color: #00D9FF; font-size: 24px; font-weight: bold;">{roi.get('average_time_reduction', 0)}%</div>
                 </div>
                 <div style="background: #2a2a40; padding: 15px; border-radius: 8px;">
                     <div style="color: #6272a4; font-size: 12px;">TASKS COMPLETED</div>
-                    <div style="color: #E6E6E6; font-size: 24px; font-weight: bold;">{roi.get('tasks_completed', 0)}</div>
+                    <div style="color: #E6E6E6; font-size: 24px; font-weight: bold;">{roi.get('total_tasks', 0)}</div>
                 </div>
             </div>
 

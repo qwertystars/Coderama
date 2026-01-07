@@ -257,6 +257,11 @@ services:
 
         logger.info(f"InfrastructureGenerator initialized: {output_dir}")
 
+    def _tf_id(self, name: str) -> str:
+        """Normalize name to valid Terraform identifier (alphanumeric and underscores only)"""
+        import re
+        return re.sub(r'[^a-zA-Z0-9]', '_', name)
+
     def generate_terraform(
         self,
         resources: List[InfrastructureResource],
@@ -328,10 +333,12 @@ variable "db_password" {
     ) -> str:
         """Generate AWS resource Terraform configuration"""
         config = resource.configuration
+        # Normalize resource name to valid Terraform identifier
+        resource_id = self._tf_id(resource.name)
 
         if resource.resource_type == ResourceType.COMPUTE:
             return self.TERRAFORM_TEMPLATES["aws_instance"].format(
-                name=resource.name,
+                name=resource_id,
                 ami=config.get("ami", "ami-0c55b159cbfafe1f0"),
                 instance_type=config.get("instance_type", "t3.micro"),
                 environment=environment,
@@ -341,7 +348,7 @@ variable "db_password" {
 
         elif resource.resource_type == ResourceType.DATABASE:
             return self.TERRAFORM_TEMPLATES["aws_rds"].format(
-                name=resource.name,
+                name=resource_id,
                 engine=config.get("engine", "postgres"),
                 engine_version=config.get("engine_version", "14"),
                 instance_class=config.get("instance_class", "db.t3.micro"),
@@ -352,7 +359,7 @@ variable "db_password" {
 
         elif resource.resource_type == ResourceType.STORAGE:
             return self.TERRAFORM_TEMPLATES["aws_s3"].format(
-                name=resource.name,
+                name=resource_id,
                 bucket_name=f"{resource.name}-{environment}",
                 environment=environment,
                 versioning="Enabled" if environment == "production" else "Suspended"
@@ -368,15 +375,17 @@ variable "db_password" {
         outputs = ["# Generated outputs\n\n"]
 
         for resource in resources:
+            # Normalize resource name to valid Terraform identifier
+            resource_id = self._tf_id(resource.name)
             if resource.resource_type == ResourceType.COMPUTE:
-                outputs.append(f'''output "{resource.name}_ip" {{
-  value = aws_instance.{resource.name}.public_ip
+                outputs.append(f'''output "{resource_id}_ip" {{
+  value = aws_instance.{resource_id}.public_ip
 }}
 
 ''')
             elif resource.resource_type == ResourceType.DATABASE:
-                outputs.append(f'''output "{resource.name}_endpoint" {{
-  value = aws_db_instance.{resource.name}.endpoint
+                outputs.append(f'''output "{resource_id}_endpoint" {{
+  value = aws_db_instance.{resource_id}.endpoint
 }}
 
 ''')

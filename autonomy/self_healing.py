@@ -1004,7 +1004,11 @@ class SelfHealingEngine:
                 healthy = [cp for cp in checkpoints if cp["health_status"]]
 
                 if healthy:
-                    rollback_success, rollback_msg = self.rollback_manager.rollback()
+                    # Pick the latest healthy checkpoint (by timestamp)
+                    latest_healthy = max(healthy, key=lambda cp: cp["timestamp"])
+                    rollback_success, rollback_msg = self.rollback_manager.rollback(
+                        checkpoint_id=latest_healthy["id"]
+                    )
                     report["actions_taken"].append(f"Rollback: {rollback_msg}")
                     if rollback_success:
                         report["healed"] = True

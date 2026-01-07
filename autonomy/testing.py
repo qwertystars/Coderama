@@ -729,8 +729,15 @@ class PerformanceTester:
             }
 
         baseline = self.baselines[metric_name]
-        deviation_percent = ((current_value - baseline.baseline_value)
-                            / baseline.baseline_value * 100)
+
+        # Guard against division by zero when baseline is 0
+        if baseline.baseline_value == 0:
+            deviation_percent = None
+        else:
+            deviation_percent = round(
+                ((current_value - baseline.baseline_value) / baseline.baseline_value * 100),
+                2
+            )
 
         if current_value >= baseline.threshold_critical:
             status = "critical"
@@ -743,7 +750,7 @@ class PerformanceTester:
             "metric": metric_name,
             "current_value": current_value,
             "baseline_value": baseline.baseline_value,
-            "deviation_percent": round(deviation_percent, 2),
+            "deviation_percent": deviation_percent,
             "status": status,
             "thresholds": {
                 "warning": baseline.threshold_warning,
