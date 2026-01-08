@@ -560,11 +560,8 @@ class ChaosEngineer:
         else:
             observations.append(f"System recovered in {recovery_time:.1f}s")
 
-        # Validate hypothesis
-        hypothesis_validated = len(issues_found) == 0 or (
-            experiment.hypothesis.lower().startswith("system should")
-            and recovery_time < experiment.duration_seconds
-        )
+        # Validate hypothesis - only valid if no issues were found during the experiment
+        hypothesis_validated = len(issues_found) == 0
 
         result = ChaosResult(
             experiment_id=experiment.id,
