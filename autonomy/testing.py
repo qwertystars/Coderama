@@ -1011,8 +1011,7 @@ class VisualRegressionTester:
     def compare_snapshot(
         self,
         component: str,
-        current_content: bytes,
-        threshold: float = 0.01
+        current_content: bytes
     ) -> Dict[str, Any]:
         """Compare current content to baseline snapshot"""
         if component not in self.snapshots:
