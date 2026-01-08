@@ -766,6 +766,30 @@ class PerformanceTester:
         ramp_up_seconds: int = 5
     ) -> Dict[str, Any]:
         """Run a load test against a target function"""
+        import math
+
+        # Guard against invalid parameters - return empty result template
+        if concurrent_users <= 0 or duration_seconds <= 0:
+            logger.warning(f"Invalid load test params: users={concurrent_users}, duration={duration_seconds}")
+            return {
+                "test_id": f"load_{uuid.uuid4().hex[:8]}",
+                "timestamp": datetime.now().isoformat(),
+                "config": {
+                    "concurrent_users": concurrent_users,
+                    "duration_seconds": duration_seconds,
+                    "ramp_up_seconds": ramp_up_seconds
+                },
+                "results": {
+                    "total_requests": 0,
+                    "successful_requests": 0,
+                    "failed_requests": 0,
+                    "success_rate": 0,
+                    "throughput_rps": 0,
+                    "response_times": None
+                },
+                "errors": ["Invalid test configuration: concurrent_users and duration_seconds must be > 0"]
+            }
+
         logger.info(f"Starting load test: {concurrent_users} users for {duration_seconds}s")
 
         results = []
@@ -774,8 +798,9 @@ class PerformanceTester:
 
         async def worker(worker_id: int):
             worker_results = []
-            # Ramp up delay
-            await asyncio.sleep((worker_id / concurrent_users) * ramp_up_seconds)
+            # Ramp up delay - guard against division by zero
+            ramp_delay = (worker_id / concurrent_users) * ramp_up_seconds
+            await asyncio.sleep(ramp_delay)
 
             while time.time() - start_time < duration_seconds:
                 call_start = time.time()
@@ -814,6 +839,27 @@ class PerformanceTester:
         total_requests = len(results)
         throughput = total_requests / duration_seconds
 
+        # Helper for proper percentile calculation with bounds checking
+        def percentile(data: list, p: float) -> float:
+            if not data:
+                return 0
+            sorted_data = sorted(data)
+            index = max(0, math.ceil(p * len(sorted_data)) - 1)
+            return sorted_data[min(index, len(sorted_data) - 1)]
+
+        # Build response times only if we have data
+        if durations:
+            response_times = {
+                "min_ms": round(min(durations), 2),
+                "max_ms": round(max(durations), 2),
+                "mean_ms": round(statistics.mean(durations), 2),
+                "median_ms": round(statistics.median(durations), 2),
+                "p95_ms": round(percentile(durations, 0.95), 2),
+                "p99_ms": round(percentile(durations, 0.99), 2)
+            }
+        else:
+            response_times = None
+
         test_result = {
             "test_id": f"load_{uuid.uuid4().hex[:8]}",
             "timestamp": datetime.now().isoformat(),
@@ -828,14 +874,7 @@ class PerformanceTester:
                 "failed_requests": total_requests - len(successful),
                 "success_rate": len(successful) / max(total_requests, 1),
                 "throughput_rps": round(throughput, 2),
-                "response_times": {
-                    "min_ms": round(min(durations), 2),
-                    "max_ms": round(max(durations), 2),
-                    "mean_ms": round(statistics.mean(durations), 2),
-                    "median_ms": round(statistics.median(durations), 2),
-                    "p95_ms": round(sorted(durations)[int(len(durations) * 0.95)], 2),
-                    "p99_ms": round(sorted(durations)[int(len(durations) * 0.99)], 2)
-                }
+                "response_times": response_times
             },
             "errors": list(set(errors))[:10]
         }

@@ -1025,6 +1025,10 @@ class CostOptimizer:
         period_hours: int = 720  # 30 days
     ) -> Dict[str, Any]:
         """Generate a cost report"""
+        # Validate period_hours to prevent division by zero
+        if period_hours <= 0:
+            raise ValueError("period_hours must be > 0")
+
         by_type = {}
         by_environment = {}
 
