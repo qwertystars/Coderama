@@ -900,8 +900,9 @@ class PerformanceTester:
 
         values = []
         for result in relevant_results:
-            if "response_times" in result.get("results", {}):
-                values.append(result["results"]["response_times"].get("mean_ms", 0))
+            response_times = result.get("results", {}).get("response_times")
+            if response_times is not None:
+                values.append(response_times.get("mean_ms", 0))
 
         if not values:
             return {"message": "No values found for trend analysis"}
